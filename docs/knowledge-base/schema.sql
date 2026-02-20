@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS public.documents (
     date DATE,
     amount DECIMAL(10, 2),
     type TEXT, -- Dynamic reference to document_types.name or ID
+    reminder_date DATE, -- New: optional date for user reminders
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

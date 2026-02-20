@@ -21,18 +21,14 @@ export const ReminderService = {
         return finalStatus === 'granted';
     },
 
-    scheduleDocumentReminder: async (docId: string, docTitle: string, expiryDate: string | null) => {
-        if (!expiryDate) return;
+    scheduleDocumentReminder: async (docId: string, docTitle: string, reminderDate: string | null) => {
+        if (!reminderDate) return;
 
-        const triggerDate = new Date(expiryDate);
+        const triggerDate = new Date(reminderDate);
         if (isNaN(triggerDate.getTime())) return;
 
-        // 90 days before
-        const ninetyDaysBefore = new Date(triggerDate);
-        ninetyDaysBefore.setDate(ninetyDaysBefore.getDate() - 90);
-
-        // If date is in past or very soon, just schedule for 1 min later for demo/test
-        if (ninetyDaysBefore < new Date()) {
+        // Ensure we don't schedule for the past
+        if (triggerDate < new Date()) {
             console.log('Reminder date is in the past, scheduling for 1 minute from now for testing.');
             await Notifications.scheduleNotificationAsync({
                 content: {
@@ -51,13 +47,13 @@ export const ReminderService = {
 
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: "Document Renewal",
-                body: `${docTitle} is up for renewal on ${expiryDate}.`,
+                title: "Document Reminder",
+                body: `Reminder: Check ${docTitle} today!`,
                 data: { docId },
             },
             trigger: {
                 type: Notifications.SchedulableTriggerInputTypes.DATE,
-                date: ninetyDaysBefore
+                date: triggerDate
             },
         });
     }

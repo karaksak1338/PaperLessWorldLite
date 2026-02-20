@@ -11,6 +11,7 @@ interface Document {
   amount: string | null;
   type: string;
   date: string | null;
+  reminder_date: string | null;
   created_at: string;
   image_uri: string;
 }
@@ -28,6 +29,7 @@ export default function Home() {
   const [editDate, setEditDate] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editType, setEditType] = useState("");
+  const [editReminderDate, setEditReminderDate] = useState("");
 
   // Filtering state
   const [searchQuery, setSearchQuery] = useState("");
@@ -111,8 +113,9 @@ export default function Home() {
         // Initialize edit states
         setEditVendor(selectedDoc.vendor || "");
         setEditDate(selectedDoc.date || "");
-        setEditAmount(selectedDoc.amount || "");
+        setEditAmount(String(selectedDoc.amount || ""));
         setEditType(selectedDoc.type || "Other");
+        setEditReminderDate(selectedDoc.reminder_date || "");
 
         // CLEANUP: Ensure path doesn't have leading slashes which can break URLs
         const cleanPath = selectedDoc.image_uri.replace(/^\/+/, "");
@@ -197,6 +200,7 @@ export default function Home() {
             date: ocrData.date || null,
             amount: ocrData.amount || null,
             type: ocrData.type || "Other",
+            reminder_date: null,
           },
         ])
         .select()
@@ -242,7 +246,8 @@ export default function Home() {
     setSaving(true);
     try {
       // Sanitize amount: empty string to null, strip non-numeric
-      const sanitizedAmount = editAmount.trim() === '' ? null : editAmount.replace(/[^0-9.]/g, '');
+      const amountStr = String(editAmount || "");
+      const sanitizedAmount = amountStr.trim() === '' ? null : amountStr.replace(/[^0-9.]/g, '');
 
       const { error } = await supabase
         .from("documents")
@@ -251,6 +256,7 @@ export default function Home() {
           date: editDate || null,
           amount: sanitizedAmount,
           type: editType,
+          reminder_date: editReminderDate || null,
         })
         .eq("id", selectedDoc.id);
 
@@ -263,6 +269,7 @@ export default function Home() {
         date: editDate || null,
         amount: sanitizedAmount,
         type: editType,
+        reminder_date: editReminderDate || null,
       };
 
       setDocuments((prev) =>
@@ -399,7 +406,10 @@ export default function Home() {
                   <div key={doc.id} className={styles.listItem}>
                     <div className={styles.docIcon} onClick={() => setSelectedDoc(doc)} style={{ cursor: 'pointer' }}>📄</div>
                     <div className={styles.docInfo} onClick={() => setSelectedDoc(doc)} style={{ cursor: 'pointer' }}>
-                      <span className={styles.docName}>{doc.vendor || "Unknown Vendor"}</span>
+                      <span className={styles.docName}>
+                        {doc.vendor || "Unknown Vendor"}
+                        {doc.reminder_date && <span className={styles.reminderIcon}> 🔔</span>}
+                      </span>
                       <span className={styles.docMeta}>{doc.type} • {doc.date || "No date"}</span>
                     </div>
                     <div className={styles.docAmount}>{doc.amount ? `$${doc.amount}` : "-"}</div>
@@ -540,6 +550,15 @@ export default function Home() {
                         <option key={t.id} value={t.name}>{t.name}</option>
                       ))}
                     </select>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <label>Reminder Date</label>
+                    <input
+                      type="date"
+                      value={editReminderDate}
+                      onChange={(e) => setEditReminderDate(e.target.value)}
+                      className={styles.modalInput}
+                    />
                   </div>
                   <button
                     onClick={handleUpdate}

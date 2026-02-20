@@ -8,6 +8,7 @@ export interface Document {
     date: string | null;
     amount: string | null;
     type: string; // 'Invoice' | 'Contract' | 'Receipt' etc.
+    reminder_date?: string | null;
     created_at: string;
 }
 

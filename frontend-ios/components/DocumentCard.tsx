@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import { FileText, ChevronRight, AlertCircle, Trash2 } from 'lucide-react-native';
+import { FileText, ChevronRight, AlertCircle, Trash2, Bell } from 'lucide-react-native';
 import { Link } from 'expo-router';
 import { StorageService } from '../services/StorageService';
 import DocumentThumbnail from './DocumentThumbnail';
@@ -44,6 +44,9 @@ export default function DocumentCard({ doc, onDelete }: { doc: any, onDelete?: (
                         {doc.amount && <Text className="text-zinc-900 font-bold text-sm mb-1">${doc.amount}</Text>}
                         {doc.expiringSoon && (
                             <AlertCircle color="#ef4444" size={14} />
+                        )}
+                        {doc.reminder_date && (
+                            <Bell color="#3b82f6" size={14} className={doc.amount ? "mt-1" : ""} />
                         )}
                     </View>
 

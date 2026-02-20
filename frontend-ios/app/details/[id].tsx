@@ -2,8 +2,9 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } fro
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StorageService, Document } from '../../services/StorageService';
-import { Trash2, Save } from 'lucide-react-native';
+import { Trash2, Save, Bell } from 'lucide-react-native';
 import { supabase } from '../../services/supabaseClient';
+import { ReminderService } from '../../services/ReminderService';
 
 export default function DetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -16,6 +17,7 @@ export default function DetailsScreen() {
     const [date, setDate] = useState('');
     const [amount, setAmount] = useState('');
     const [type, setType] = useState('Other');
+    const [reminderDate, setReminderDate] = useState('');
     const [documentTypes, setDocumentTypes] = useState<{ id: string, name: string }[]>([]);
 
     useEffect(() => {
@@ -34,6 +36,7 @@ export default function DetailsScreen() {
                     setDate(document.date || '');
                     setAmount(document.amount || '');
                     setType(document.type || 'Other');
+                    setReminderDate(document.reminder_date || '');
 
                     // Fetch signed URL
                     if (document.image_uri) {
@@ -63,8 +66,14 @@ export default function DetailsScreen() {
                 vendor: vendor.trim() || 'Unknown Vendor',
                 date: date.trim() || null,
                 amount: sanitizedAmount,
-                type: type
+                type: type,
+                reminder_date: reminderDate.trim() || null
             });
+
+            // Schedule notification if reminder date is set
+            if (reminderDate.trim()) {
+                await ReminderService.scheduleDocumentReminder(doc.id, vendor.trim() || 'Document', reminderDate.trim());
+            }
 
             Alert.alert("Success", "Changes saved successfully.");
             router.back();
@@ -155,6 +164,21 @@ export default function DetailsScreen() {
                         value={amount}
                         onChangeText={setAmount}
                     />
+                </View>
+
+                <View className="mb-4">
+                    <View className="flex-row items-center mb-1">
+                        <Text className="text-zinc-500 text-sm uppercase font-semibold tracking-wider">Reminder Date</Text>
+                        {/* @ts-ignore */}
+                        <Bell size={14} color="#71717a" className="ml-2" />
+                    </View>
+                    <TextInput
+                        className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-base text-zinc-900"
+                        placeholder="YYYY-MM-DD"
+                        value={reminderDate}
+                        onChangeText={setReminderDate}
+                    />
+                    <Text className="text-zinc-400 text-xs mt-1">Leave empty to disable reminders.</Text>
                 </View>
 
                 <View className="mb-8">
