@@ -48,7 +48,7 @@ export default function LoginScreen() {
                 <View className="flex-1 justify-center px-6">
                     <View style={styles.header}>
                         <Text style={styles.title}>{isSignUp ? 'Join' : 'Welcome to'}</Text>
-                        <Text style={styles.brand}>PaperLessWorld</Text>
+                        <Text style={styles.brand}>PaperLessWorldLite</Text>
                         <Text style={styles.subtitle}>
                             {isSignUp ? 'Create an account to start syncing' : 'Enter your credentials to access your vault'}
                         </Text>
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
         color: '#3f3f46',
     },
     brand: {
-        fontSize: 40,
+        fontSize: 32,
         fontWeight: '900',
         color: '#6366f1',
         marginBottom: 10,
