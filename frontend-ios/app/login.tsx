@@ -39,6 +39,23 @@ export default function LoginScreen() {
         }
     };
 
+    const handleForgotPassword = async () => {
+        if (!email) {
+            Alert.alert('Email Required', 'Please enter your email address first to reset your password.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await AuthService.resetPassword(email);
+            Alert.alert('Success', 'Password reset instructions have been sent to your email.');
+        } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to send reset email.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -101,6 +118,16 @@ export default function LoginScreen() {
                                 {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
                             </Text>
                         </TouchableOpacity>
+
+                        {!isSignUp && (
+                            <TouchableOpacity
+                                onPress={handleForgotPassword}
+                                className="mt-4 items-center"
+                                disabled={loading}
+                            >
+                                <Text className="text-zinc-400 text-sm">Forgot Password?</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </ScrollView>

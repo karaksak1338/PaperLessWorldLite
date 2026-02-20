@@ -62,6 +62,15 @@ export default function DetailsScreen() {
                 return;
             }
 
+            // Validate reminder date isn't in the past
+            if (reminderDate.trim()) {
+                const today = new Date().toISOString().split('T')[0];
+                if (reminderDate.trim() < today) {
+                    Alert.alert("Invalid Date", "Reminder date cannot be in the past.");
+                    return;
+                }
+            }
+
             await StorageService.updateDocument(doc.id, {
                 vendor: vendor.trim() || 'Unknown Vendor',
                 date: date.trim() || null,

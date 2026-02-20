@@ -245,6 +245,16 @@ export default function Home() {
     if (!selectedDoc) return;
     setSaving(true);
     try {
+      // Validate reminder date isn't in the past
+      if (editReminderDate) {
+        const today = new Date().toISOString().split('T')[0];
+        if (editReminderDate < today) {
+          alert("Reminder date cannot be in the past.");
+          setSaving(false);
+          return;
+        }
+      }
+
       // Sanitize amount: empty string to null, strip non-numeric
       const amountStr = String(editAmount || "");
       const sanitizedAmount = amountStr.trim() === '' ? null : amountStr.replace(/[^0-9.]/g, '');
