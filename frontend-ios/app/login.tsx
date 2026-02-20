@@ -64,7 +64,7 @@ export default function LoginScreen() {
                             autoCapitalize="none"
                             keyboardType="email-address"
                             autoComplete="email"
-                            disabled={loading}
+                            editable={!loading}
                         />
 
                         <TextInput
@@ -75,7 +75,7 @@ export default function LoginScreen() {
                             onChangeText={setPassword}
                             secureTextEntry
                             autoCapitalize="none"
-                            disabled={loading}
+                            editable={!loading}
                         />
 
                         <TouchableOpacity
