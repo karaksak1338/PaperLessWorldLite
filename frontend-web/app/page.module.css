@@ -1,3 +1,4 @@
+/* Existing Styles */
 .container {
   min-height: 100vh;
   display: flex;
@@ -532,17 +533,15 @@
   margin-top: 1rem;
   background: var(--primary);
   color: white;
-  padding: 1rem;
   border: none;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: transform 0.2s, background 0.2s;
 }
 
 .saveBtn:hover {
-  opacity: 0.9;
   transform: translateY(-1px);
 }
 
@@ -583,19 +582,251 @@
   color: var(--text-muted);
   border-top: 1px solid var(--glass-border);
 }
-/* Profile & Subscription Styles */
-.profileSection { margin-top: 1.5rem; color: var(--text); }
-.planBadge { background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); padding: 0.75rem 1rem; border-radius: 12px; margin-bottom: 2rem; font-size: 0.9rem; }
-.profileForm { display: flex; flex-direction: column; gap: 1.5rem; }
-.formGroup { display: flex; flex-direction: column; gap: 0.5rem; }
-.formGroup label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; }
-.formGroup input, .formGroup textarea { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); padding: 0.75rem 1rem; border-radius: 8px; color: var(--text); font-size: 1rem; transition: border-color 0.2s; }
-.formGroup input:focus, .formGroup textarea:focus { outline: none; border-color: var(--primary); }
-.saveBtn { background: var(--primary); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: transform 0.2s, background 0.2s; }
-.divider { border: 0; border-top: 1px solid var(--glass-border); margin: 2rem 0; }
-.planAdminTable { margin-top: 2rem; background: rgba(0, 0, 0, 0.2); padding: 1.5rem; border-radius: 12px; }
-.planAdminTable table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.9rem; }
-.planAdminTable th { text-align: left; padding: 0.5rem; border-bottom: 1px solid var(--glass-border); color: var(--text-muted); }
-.planAdminTable td { padding: 0.75rem 0.5rem; }
-.planAdminTable input { width: 80px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); padding: 0.4rem; border-radius: 4px; color: var(--text); }
-.planAdminTable button { background: rgba(255, 255, 255, 0.1); border: 1px solid var(--glass-border); color: var(--text); padding: 0.4rem 0.8rem; border-radius: 4px; cursor: pointer; }
+
+/* Profiles & Governance Styles */
+.profileSection {
+  margin-top: 1.5rem;
+  color: var(--text);
+}
+
+.planBadge {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 1rem;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.pendingHint {
+  color: #f59e0b;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.planSelector {
+  margin-top: 1.5rem;
+}
+
+.planSelector label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.planOption {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  padding: 0.75rem;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.planOption span {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.miniBtn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profileForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.formGroup input,
+.formGroup textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--glass-border);
+  margin: 2rem 0;
+}
+
+.adminTrigger {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.plainLink {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+/* Admin Dashboard */
+.planAdminTable {
+  margin-top: 2rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+}
+
+.tabHeader {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.tabHeader button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  position: relative;
+}
+
+.activeTab {
+  color: var(--text) !important;
+}
+
+.activeTab::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--primary);
+}
+
+.adminTabContent h3 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.planAdminTable table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.planAdminTable th {
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.planAdminTable td {
+  padding: 1rem 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  font-size: 0.9rem;
+}
+
+.statusBadge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.active {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.suspended {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.pending {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.approved {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btnGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.approveBtn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+
+.rejectBtn {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+}

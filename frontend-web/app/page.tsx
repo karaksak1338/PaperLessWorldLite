@@ -16,6 +16,47 @@ interface Document {
   image_uri: string;
 }
 
+interface UserProfile {
+  id: string;
+  username: string | null;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  address: string | null;
+  company: string | null;
+  role: 'USER' | 'ADMIN';
+  status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
+  subscription_state: 'ACTIVE' | 'PENDING_CHANGE' | 'CANCELLED' | 'EXPIRED';
+  plan_id: string;
+  subscription_plans?: {
+    name: string;
+    plan_code: string;
+    monthly_limit: number;
+  };
+}
+
+interface PlanRequest {
+  id: string;
+  user_id: string;
+  request_type: 'UPGRADE' | 'DOWNGRADE' | 'CANCEL';
+  requested_plan_id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXECUTED';
+  requested_at: string;
+  profiles: { username: string; full_name: string };
+  requested_plan: { name: string };
+}
+
+interface AuditLog {
+  id: string;
+  table_name: string;
+  record_id: string;
+  action: string;
+  old_data: any;
+  new_data: any;
+  performed_by: string;
+  created_at: string;
+}
+
 export default function Home() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,14 +85,21 @@ export default function Home() {
   const [displayLimit, setDisplayLimit] = useState(10);
 
   // Profile & Subscription state
-  const [profile, setProfile] = useState<{ full_name: string | null, address: string | null, plan_id: string } | null>(null);
-  const [subscription, setSubscription] = useState<{ name: string, monthly_limit: number } | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [subscription, setSubscription] = useState<{ name: string, plan_code: string, monthly_limit: number } | null>(null);
   const [monthlyUsage, setMonthlyUsage] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
-  const [showPlanAdmin, setShowPlanAdmin] = useState(false);
+  const [showAdminDashboard, setShowAdminDashboard] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
   const [editAddress, setEditAddress] = useState("");
-  const [subscriptionPlans, setSubscriptionPlans] = useState<{ id: string, name: string, monthly_limit: number, price: number }[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<{ id: string, name: string, plan_code: string, monthly_limit: number, price: number }[]>([]);
+
+  // Admin Data
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [planRequests, setPlanRequests] = useState<PlanRequest[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [activeTab, setActiveTab] = useState<'USERS' | 'REQUESTS' | 'PLANS' | 'AUDIT'>('USERS');
 
   // Fetch Document Types
   const fetchTypes = async () => {
@@ -86,24 +134,51 @@ export default function Home() {
       // 1. Fetch Profile
       let { data: profileData } = await supabase
         .from("profiles")
-        .select("*, subscription_plans(name, monthly_limit)")
+        .select("*, subscription_plans(name, plan_code, monthly_limit)")
         .eq("id", user.id)
         .single();
 
       if (profileData) {
         setProfile(profileData);
         setEditName(profileData.full_name || "");
+        setEditUsername(profileData.username || "");
         setEditAddress(profileData.address || "");
         setSubscription(profileData.subscription_plans);
+
+        // If Admin, fetch all data
+        if (profileData.role === 'ADMIN') {
+          fetchAdminData();
+        }
       }
 
       // 2. Fetch Usage (Docs created this month)
       const { data: usageCount } = await supabase.rpc('get_monthly_usage', { target_user_id: user.id });
       setMonthlyUsage(usageCount || 0);
 
-      // 3. Fetch all plans (for Admin)
+      // 3. Fetch all plans
       const { data: plans } = await supabase.from("subscription_plans").select("*").order("price");
       setSubscriptionPlans(plans || []);
+    };
+
+    const fetchAdminData = async () => {
+      // Fetch Users
+      const { data: users } = await supabase.from("profiles").select("*, subscription_plans(name, plan_code, monthly_limit)").order("full_name");
+      setAllUsers(users || []);
+
+      // Fetch Requests
+      const { data: reqs } = await supabase
+        .from("plan_change_requests")
+        .select("*, profiles(username, full_name), requested_plan:subscription_plans!requested_plan_id(name)")
+        .order("requested_at", { ascending: false });
+      setPlanRequests(reqs || []);
+
+      // Fetch Audits
+      const { data: audits } = await supabase
+        .from("audit_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setAuditLogs(audits || []);
     };
 
     fetchProfileData();
@@ -375,33 +450,139 @@ export default function Home() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        full_name: editName,
-        address: editAddress,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    setSaving(false);
-    if (error) alert("Error updating profile: " + error.message);
-    else alert("Profile updated successfully!");
+      // Validate Username
+      if (editUsername.trim() && editUsername !== profile?.username) {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("username", editUsername.trim())
+          .maybeSingle();
+
+        if (existing) {
+          alert("Error: USERNAME_ALREADY_EXISTS");
+          setSaving(false);
+          return;
+        }
+      }
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          username: editUsername.trim() || null,
+          full_name: editName,
+          address: editAddress,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      alert("Profile updated successfully!");
+      // Update local state
+      if (profile) setProfile({ ...profile, username: editUsername.trim(), full_name: editName, address: editAddress });
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRequestPlanChange = async (targetPlanId: string, type: 'UPGRADE' | 'DOWNGRADE' | 'CANCEL') => {
+    if (!confirm(`Are you sure you want to request a ${type}?`)) return;
+
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.rpc('request_plan_change', {
+        target_plan_id: targetPlanId,
+        type: type
+      });
+
+      if (error) {
+        if (error.message.includes('CHANGE_ALREADY_PENDING')) alert("Error: CHANGE_ALREADY_PENDING");
+        else if (error.message.includes('QUOTA_CONFLICT')) alert("Error: QUOTA_CONFLICT");
+        else throw error;
+      } else {
+        alert("Request submitted! An administrator will review it shortly.");
+        // Refresh profile state
+        if (profile) setProfile({ ...profile, subscription_state: 'PENDING_CHANGE' });
+      }
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleProcessRequest = async (requestId: string, approve: boolean) => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const req = planRequests.find(r => r.id === requestId);
+      if (!req) return;
+
+      const newStatus = approve ? 'APPROVED' : 'REJECTED';
+
+      const { error } = await supabase
+        .from("plan_change_requests")
+        .update({
+          status: newStatus,
+          processed_by: user.id,
+          effective_at: approve ? new Date().toISOString() : null
+        })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      // If approved, update user's plan and state
+      if (approve) {
+        await supabase
+          .from("profiles")
+          .update({
+            plan_id: req.requested_plan_id,
+            subscription_state: 'ACTIVE'
+          })
+          .eq("id", req.user_id);
+      } else {
+        // Just reset state
+        await supabase
+          .from("profiles")
+          .update({ subscription_state: 'ACTIVE' })
+          .eq("id", req.user_id);
+      }
+
+      alert(`Request ${newStatus}`);
+      // Refresh local admin data
+      const { data: users } = await supabase.from("profiles").select("*, subscription_plans(name, plan_code, monthly_limit)").order("full_name");
+      setAllUsers(users || []);
+      const { data: reqs } = await supabase
+        .from("plan_change_requests")
+        .select("*, profiles(username, full_name), requested_plan:subscription_plans!requested_plan_id(name)")
+        .order("requested_at", { ascending: false });
+      setPlanRequests(reqs || []);
+
+    } catch (error: any) {
+      alert("Error processing request: " + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleUpdatePlan = async (planId: string, limit: number, price: number) => {
     const { error } = await supabase
       .from("subscription_plans")
-      .update({ monthly_limit: limit, price: price })
+      .update({ monthly_limit: limit, price: price, modified_at: new Date().toISOString() })
       .eq("id", planId);
 
     if (error) alert("Error updating plan: " + error.message);
     else {
       alert("Plan updated!");
-      // Refresh plans
       const { data } = await supabase.from("subscription_plans").select("*").order("price");
       setSubscriptionPlans(data || []);
     }
@@ -599,6 +780,10 @@ export default function Home() {
 
                 <form onSubmit={handleUpdateProfile} className={styles.profileForm}>
                   <div className={styles.formGroup}>
+                    <label>Username (Unique)</label>
+                    <input type="text" value={editUsername} onChange={e => setEditUsername(e.target.value)} placeholder="@username" />
+                  </div>
+                  <div className={styles.formGroup}>
                     <label>Full Name</label>
                     <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Your name" />
                   </div>
@@ -610,6 +795,35 @@ export default function Home() {
                     {saving ? "Saving..." : "Save Profile Details"}
                   </button>
                 </form>
+
+                <div className={styles.securitySection}>
+                  <h3>Subscription & Quota</h3>
+                  <div className={styles.planBadge}>
+                    Current Plan: <strong>{subscription?.name || "Free"}</strong> ({monthlyUsage} / {subscription?.monthly_limit === -1 ? '∞' : subscription?.monthly_limit} docs)
+                    {profile?.subscription_state === 'PENDING_CHANGE' && (
+                      <div className={styles.pendingHint}>🔔 Change Request Pending Admin Review</div>
+                    )}
+                  </div>
+
+                  {profile?.subscription_state === 'ACTIVE' && (
+                    <div className={styles.planSelector}>
+                      <label>Request Plan Change:</label>
+                      <div className={styles.planGrid}>
+                        {subscriptionPlans.filter(p => p.id !== profile.plan_id).map(p => (
+                          <div key={p.id} className={styles.planOption}>
+                            <span>{p.name} ($0.00)</span>
+                            <button
+                              onClick={() => handleRequestPlanChange(p.id, p.monthly_limit > (subscription?.monthly_limit || 0) ? 'UPGRADE' : 'DOWNGRADE')}
+                              className={styles.miniBtn}
+                            >
+                              Request
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <hr className={styles.divider} />
 
@@ -624,36 +838,47 @@ export default function Home() {
                 <div className={styles.adminTrigger}>
                   <button
                     className={styles.plainLink}
-                    onClick={() => setShowPlanAdmin(!showPlanAdmin)}
+                    onClick={() => setShowAdminDashboard(!showAdminDashboard)}
                   >
-                    {showPlanAdmin ? "Hide Plan Administration" : "Manage Subscription Plans (Admin)"}
+                    {showAdminDashboard ? "Hide Management Dashboard" : "Open Admin Control Plane"}
                   </button>
                 </div>
 
-                {showPlanAdmin && (
+                {showAdminDashboard && (
                   <div className={styles.planAdminTable}>
-                    <h3>Manage Plans</h3>
+                    <button className={activeTab === 'USERS' ? styles.activeTab : ''} onClick={() => setActiveTab('USERS')}>Users</button>
+                    <button className={activeTab === 'REQUESTS' ? styles.activeTab : ''} onClick={() => setActiveTab('REQUESTS')}>Requests</button>
+                    <button className={activeTab === 'PLANS' ? styles.activeTab : ''} onClick={() => setActiveTab('PLANS')}>Plans</button>
+                    <button className={activeTab === 'AUDIT' ? styles.activeTab : ''} onClick={() => setActiveTab('AUDIT')}>Audit Log</button>
+                  </div>
+
+                    {activeTab === 'USERS' && (
+                  <div className={styles.adminTabContent}>
+                    <h3>User Administration</h3>
                     <table>
                       <thead>
                         <tr>
-                          <th>Plan Name</th>
-                          <th>Monthly Limit</th>
-                          <th>Save</th>
+                          <th>User/Username</th>
+                          <th>Status</th>
+                          <th>Plan</th>
+                          <th>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {subscriptionPlans.map(plan => (
-                          <tr key={plan.id}>
-                            <td>{plan.name}</td>
+                        {allUsers.map(u => (
+                          <tr key={u.id}>
                             <td>
-                              <input
-                                type="number"
-                                defaultValue={plan.monthly_limit}
-                                onBlur={(e) => plan.monthly_limit = parseInt(e.target.value)}
-                              />
+                              <div>{u.full_name || 'No Name'}</div>
+                              <div className={styles.hint}>@{u.username || 'no-username'}</div>
                             </td>
                             <td>
-                              <button onClick={() => handleUpdatePlan(plan.id, plan.monthly_limit, 0)}>Update</button>
+                              <span className={`${styles.statusBadge} ${styles[u.status.toLowerCase()]}`}>
+                                {u.status}
+                              </span>
+                            </td>
+                            <td>{u.subscription_plans?.name}</td>
+                            <td>
+                              <button onClick={() => alert("Suspend flow TBD")}>Manage</button>
                             </td>
                           </tr>
                         ))}
@@ -661,102 +886,200 @@ export default function Home() {
                     </table>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {selectedDoc && (
-          <div className={styles.modalOverlay} onClick={() => setSelectedDoc(null)}>
-            <div className={`${styles.modalContent} glass`} onClick={e => e.stopPropagation()}>
-              <button className={styles.closeBtn} onClick={() => setSelectedDoc(null)}>✕</button>
-              <h2>Document Details</h2>
-              <div className={styles.modalGrid}>
-                <div className={styles.imagePreview}>
-                  {signedUrl ? (
-                    signedUrl.toLowerCase().includes(".pdf") ? (
-                      <iframe src={signedUrl} className={styles.pdfIframe} />
-                    ) : (
-                      <img src={signedUrl} alt="Document" onError={(e) => {
-                        console.error("Image load failed, attempting recovery...");
-                        // If it fails, maybe it's not an image or CORS issue
-                      }} />
-                    )
-                  ) : (
-                    <div className={styles.loaderContainer}>
-                      <div className={styles.loader} />
-                      <p>Fetching secure preview...</p>
-                    </div>
-                  )}
-                </div>
-                <div className={styles.details}>
-                  <div className={styles.detailItem}>
-                    <label>Vendor</label>
-                    <input
-                      type="text"
-                      value={editVendor}
-                      onChange={(e) => setEditVendor(e.target.value)}
-                      className={styles.modalInput}
-                    />
+                {activeTab === 'REQUESTS' && (
+                  <div className={styles.adminTabContent}>
+                    <h3>Plan Change Requests</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>User</th>
+                          <th>Type</th>
+                          <th>Plan</th>
+                          <th>Date</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {planRequests.map(r => (
+                          <tr key={r.id}>
+                            <td>{r.profiles.username || r.profiles.full_name}</td>
+                            <td><strong>{r.request_type}</strong></td>
+                            <td>{r.requested_plan.name}</td>
+                            <td>{new Date(r.requested_at).toLocaleDateString()}</td>
+                            <td>
+                              {r.status === 'PENDING' ? (
+                                <div className={styles.btnGroup}>
+                                  <button className={styles.approveBtn} onClick={() => handleProcessRequest(r.id, true)}>Approve</button>
+                                  <button className={styles.rejectBtn} onClick={() => handleProcessRequest(r.id, false)}>Reject</button>
+                                </div>
+                              ) : (
+                                <span className={`${styles.statusBadge} ${styles[r.status.toLowerCase()]}`}>
+                                  {r.status}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className={styles.detailItem}>
-                    <label>Date</label>
-                    <input
-                      type="date"
-                      value={editDate}
-                      onChange={(e) => setEditDate(e.target.value)}
-                      className={styles.modalInput}
-                    />
+                )}
+
+                {activeTab === 'PLANS' && (
+                  <div className={styles.adminTabContent}>
+                    <h3>Manage Subscription Tiers</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Plan Code</th>
+                          <th>Limit</th>
+                          <th>Price</th>
+                          <th>Sync</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subscriptionPlans.map(plan => (
+                          <tr key={plan.id}>
+                            <td><strong>{plan.plan_code}</strong></td>
+                            <td>
+                              <input
+                                type="number"
+                                defaultValue={plan.monthly_limit}
+                                onBlur={(e) => plan.monthly_limit = parseInt(e.target.value)}
+                              />
+                            </td>
+                            <td>${plan.price}</td>
+                            <td>
+                              <button onClick={() => handleUpdatePlan(plan.id, plan.monthly_limit, plan.price)}>Update</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className={styles.detailItem}>
-                    <label>Amount</label>
-                    <input
-                      type="text"
-                      placeholder="0.00"
-                      value={editAmount}
-                      onChange={(e) => setEditAmount(e.target.value)}
-                      className={styles.modalInput}
-                    />
-                  </div>
-                  <div className={styles.detailItem}>
-                    <label>Classification</label>
-                    <select
-                      className={styles.modalInput}
-                      value={editType}
-                      onChange={(e) => setEditType(e.target.value)}
-                    >
-                      <option value="Other">Other</option>
-                      {documentTypes.map(t => (
-                        <option key={t.id} value={t.name}>{t.name}</option>
+                )}
+
+                {activeTab === 'AUDIT' && (
+                  <div className={styles.adminTabContent}>
+                    <h3>System Audit Trail</h3>
+                    <div className={styles.auditContainer}>
+                      {auditLogs.map(log => (
+                        <div key={log.id} className={styles.auditItem}>
+                          <div className={styles.auditMeta}>
+                            <span className={styles.auditAction}>{log.action}</span>
+                            <span className={styles.auditTable}>{log.table_name}</span>
+                            <span className={styles.auditTime}>{new Date(log.created_at).toLocaleString()}</span>
+                          </div>
+                          <div className={styles.auditDetails}>
+                            Record ID: <span className={styles.mono}>{log.record_id}</span>
+                          </div>
+                        </div>
                       ))}
-                    </select>
+                    </div>
                   </div>
-                  <div className={styles.detailItem}>
-                    <label>Reminder Date</label>
-                    <input
-                      type="date"
-                      value={editReminderDate}
-                      onChange={(e) => setEditReminderDate(e.target.value)}
-                      className={styles.modalInput}
-                    />
-                  </div>
-                  <button
-                    onClick={handleUpdate}
-                    className={styles.saveBtn}
-                    disabled={saving}
-                  >
-                    {saving ? "Saving..." : "Save Changes"}
-                  </button>
-                </div>
+                )}
               </div>
+                )}
             </div>
           </div>
-        )}
-      </main>
+          </div>
+  )
+}
 
-      <footer className={styles.footer}>
-        <p>© 2026 PaperLessWorldLite. Governed by NSK IT Consulting GmbH.</p>
-      </footer>
+{
+  selectedDoc && (
+    <div className={styles.modalOverlay} onClick={() => setSelectedDoc(null)}>
+      <div className={`${styles.modalContent} glass`} onClick={e => e.stopPropagation()}>
+        <button className={styles.closeBtn} onClick={() => setSelectedDoc(null)}>✕</button>
+        <h2>Document Details</h2>
+        <div className={styles.modalGrid}>
+          <div className={styles.imagePreview}>
+            {signedUrl ? (
+              signedUrl.toLowerCase().includes(".pdf") ? (
+                <iframe src={signedUrl} className={styles.pdfIframe} />
+              ) : (
+                <img src={signedUrl} alt="Document" onError={(e) => {
+                  console.error("Image load failed, attempting recovery...");
+                  // If it fails, maybe it's not an image or CORS issue
+                }} />
+              )
+            ) : (
+              <div className={styles.loaderContainer}>
+                <div className={styles.loader} />
+                <p>Fetching secure preview...</p>
+              </div>
+            )}
+          </div>
+          <div className={styles.details}>
+            <div className={styles.detailItem}>
+              <label>Vendor</label>
+              <input
+                type="text"
+                value={editVendor}
+                onChange={(e) => setEditVendor(e.target.value)}
+                className={styles.modalInput}
+              />
+            </div>
+            <div className={styles.detailItem}>
+              <label>Date</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className={styles.modalInput}
+              />
+            </div>
+            <div className={styles.detailItem}>
+              <label>Amount</label>
+              <input
+                type="text"
+                placeholder="0.00"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className={styles.modalInput}
+              />
+            </div>
+            <div className={styles.detailItem}>
+              <label>Classification</label>
+              <select
+                className={styles.modalInput}
+                value={editType}
+                onChange={(e) => setEditType(e.target.value)}
+              >
+                <option value="Other">Other</option>
+                {documentTypes.map(t => (
+                  <option key={t.id} value={t.name}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.detailItem}>
+              <label>Reminder Date</label>
+              <input
+                type="date"
+                value={editReminderDate}
+                onChange={(e) => setEditReminderDate(e.target.value)}
+                className={styles.modalInput}
+              />
+            </div>
+            <button
+              onClick={handleUpdate}
+              className={styles.saveBtn}
+              disabled={saving}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  )
+}
+      </main >
+
+  <footer className={styles.footer}>
+    <p>© 2026 PaperLessWorldLite. Governed by NSK IT Consulting GmbH.</p>
+  </footer>
+    </div >
   );
 }

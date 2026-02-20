@@ -10,11 +10,13 @@ export default function ProfileScreen() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const [profile, setProfile] = useState<any>(null);
-    const [subscription, setSubscription] = useState<any>(null);
     const [monthlyUsage, setMonthlyUsage] = useState(0);
+    const [subscription, setSubscription] = useState<any>(null);
+    const [subscriptionState, setSubscriptionState] = useState<string>('ACTIVE');
+    const [availablePlans, setAvailablePlans] = useState<any[]>([]);
 
     const [fullName, setFullName] = useState('');
+    const [username, setUsername] = useState('');
     const [address, setAddress] = useState('');
 
     useEffect(() => {
@@ -34,15 +36,20 @@ export default function ProfileScreen() {
                 .single();
 
             if (profileData) {
-                setProfile(profileData);
                 setFullName(profileData.full_name || '');
+                setUsername(profileData.username || '');
                 setAddress(profileData.address || '');
                 setSubscription(profileData.subscription_plans);
+                setSubscriptionState(profileData.subscription_state || 'ACTIVE');
             }
 
             // 2. Monthly Usage
             const { data: usageCount } = await supabase.rpc('get_monthly_usage', { target_user_id: user.id });
             setMonthlyUsage(usageCount || 0);
+
+            // 3. Available Plans
+            const { data: plans } = await supabase.from('subscription_plans').select('*').order('price');
+            setAvailablePlans(plans || []);
 
         } catch (error) {
             console.error(error);
@@ -57,9 +64,20 @@ export default function ProfileScreen() {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
+            // Username uniqueness check
+            if (username.trim()) {
+                const { data: existing } = await supabase.from('profiles').select('id').eq('username', username.trim()).neq('id', user.id).maybeSingle();
+                if (existing) {
+                    Alert.alert("Error", "Username is already taken.");
+                    setSaving(false);
+                    return;
+                }
+            }
+
             const { error } = await supabase
                 .from("profiles")
                 .update({
+                    username: username.trim() || null,
                     full_name: fullName,
                     address: address,
                     updated_at: new Date().toISOString()
@@ -73,6 +91,35 @@ export default function ProfileScreen() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleRequestPlanChange = async (targetPlanId: string, type: string) => {
+        Alert.alert(
+            "Change Subscription",
+            `Do you want to submit a formal request for a plan ${type}?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Request",
+                    onPress: async () => {
+                        setSaving(true);
+                        try {
+                            const { error } = await supabase.rpc('request_plan_change', {
+                                target_plan_id: targetPlanId,
+                                type: type
+                            });
+                            if (error) throw error;
+                            Alert.alert('Success', 'Request submitted! An administrator will review it.');
+                            setSubscriptionState('PENDING_CHANGE');
+                        } catch (error: any) {
+                            Alert.alert('Error', error.message);
+                        } finally {
+                            setSaving(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     const handleSignOut = async () => {
@@ -114,9 +161,30 @@ export default function ProfileScreen() {
                         <Text className="text-zinc-900 font-bold text-lg ml-2">Subscription</Text>
                     </View>
                     <Text className="text-zinc-600 mb-1">Current Plan: <Text className="font-bold text-indigo-600">{subscription?.name || 'Free'}</Text></Text>
-                    <Text className="text-zinc-500 text-sm">
-                        Usage: {monthlyUsage} / {subscription?.monthly_limit === -1 ? '∞' : subscription?.monthly_limit} docs this month
+                    <Text className="text-zinc-500 text-sm mb-3">
+                        Usage: {monthlyUsage} / {subscription?.monthly_limit === -1 ? '∞' : subscription?.monthly_limit} docs
                     </Text>
+
+                    {subscriptionState === 'PENDING_CHANGE' ? (
+                        <View className="bg-amber-50 p-3 rounded-lg border border-amber-100">
+                            <Text className="text-amber-700 font-bold text-xs">🔔 Change Request Pending Review</Text>
+                        </View>
+                    ) : (
+                        <View className="mt-2">
+                            <Text className="text-zinc-500 text-xs font-bold uppercase mb-2 ml-1">Request Plan Change</Text>
+                            <View className="flex-row flex-wrap">
+                                {availablePlans.filter((p: any) => p.id !== subscription?.id).map((p: any) => (
+                                    <TouchableOpacity
+                                        key={p.id}
+                                        className="bg-zinc-100 px-3 py-2 rounded-lg mr-2 mb-2"
+                                        onPress={() => handleRequestPlanChange(p.id, p.monthly_limit > (subscription?.monthly_limit || 0) ? 'UPGRADE' : 'DOWNGRADE')}
+                                    >
+                                        <Text className="text-zinc-700 font-bold text-xs">{p.name} ($0.00)</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 {/* Profile Form */}
@@ -133,6 +201,15 @@ export default function ProfileScreen() {
                         placeholder="Your name"
                         value={fullName}
                         onChangeText={setFullName}
+                    />
+
+                    <Text className="text-zinc-500 text-xs font-bold uppercase mb-1 ml-1">Username (Unique)</Text>
+                    <TextInput
+                        className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 mb-4 text-zinc-900"
+                        placeholder="@username"
+                        autoCapitalize="none"
+                        value={username}
+                        onChangeText={setUsername}
                     />
 
                     <Text className="text-zinc-500 text-xs font-bold uppercase mb-1 ml-1">Address</Text>
