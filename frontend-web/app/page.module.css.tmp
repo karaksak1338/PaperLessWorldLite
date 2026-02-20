@@ -1,0 +1,164 @@
+.footer {
+  margin-top: 4rem;
+  padding: 2rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--glass-border);
+}
+
+/* Profile & Subscription Styles */
+.profileSection {
+  margin-top: 1.5rem;
+  color: var(--text);
+}
+
+.planBadge {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+}
+
+.profileForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.formGroup input, .formGroup textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.formGroup input:focus, .formGroup textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.saveBtn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.saveBtn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid var(--glass-border);
+  margin: 2rem 0;
+}
+
+.securitySection h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.secondaryBtn {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.secondaryBtn:hover {
+  border-color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.adminTrigger {
+  text-align: center;
+  margin-top: 1rem;
+}
+
+.plainLink {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.planAdminTable {
+  margin-top: 2rem;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  border-radius: 12px;
+}
+
+.planAdminTable table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.planAdminTable th {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+
+.planAdminTable td {
+  padding: 0.75rem 0.5rem;
+}
+
+.planAdminTable input {
+  width: 80px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  padding: 0.4rem;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.planAdminTable button {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--glass-border);
+  color: var(--text);
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
