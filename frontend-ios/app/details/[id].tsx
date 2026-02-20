@@ -2,9 +2,10 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, Alert } fro
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { StorageService, Document } from '../../services/StorageService';
-import { Trash2, Save, Bell } from 'lucide-react-native';
+import { Trash2, Save, Bell, Calendar } from 'lucide-react-native';
 import { supabase } from '../../services/supabaseClient';
 import { ReminderService } from '../../services/ReminderService';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function DetailsScreen() {
     const { id } = useLocalSearchParams();
@@ -19,6 +20,10 @@ export default function DetailsScreen() {
     const [type, setType] = useState('Other');
     const [reminderDate, setReminderDate] = useState('');
     const [documentTypes, setDocumentTypes] = useState<{ id: string, name: string }[]>([]);
+
+    // Date Picker state
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [showReminderPicker, setShowReminderPicker] = useState(false);
 
     useEffect(() => {
         const fetchTypes = async () => {
@@ -159,11 +164,25 @@ export default function DetailsScreen() {
 
                 <View className="mb-4">
                     <Text className="text-zinc-500 text-sm mb-1 uppercase font-semibold tracking-wider">Date</Text>
-                    <TextInput
-                        className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-base text-zinc-900"
-                        value={date}
-                        onChangeText={setDate}
-                    />
+                    <TouchableOpacity
+                        onPress={() => setShowDatePicker(true)}
+                        className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex-row items-center justify-between"
+                    >
+                        <Text className="text-base text-zinc-900">{date || 'Select Date'}</Text>
+                        {/* @ts-ignore */}
+                        <Calendar size={18} color="#71717a" />
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                        <DateTimePicker
+                            value={date ? new Date(date) : new Date()}
+                            mode="date"
+                            display="default"
+                            onChange={(event, selectedDate) => {
+                                setShowDatePicker(false);
+                                if (selectedDate) setDate(selectedDate.toISOString().split('T')[0]);
+                            }}
+                        />
+                    )}
                 </View>
 
                 <View className="mb-4">
@@ -181,13 +200,29 @@ export default function DetailsScreen() {
                         {/* @ts-ignore */}
                         <Bell size={14} color="#71717a" className="ml-2" />
                     </View>
-                    <TextInput
-                        className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 text-base text-zinc-900"
-                        placeholder="YYYY-MM-DD"
-                        value={reminderDate}
-                        onChangeText={setReminderDate}
-                    />
-                    <Text className="text-zinc-400 text-xs mt-1">Leave empty to disable reminders.</Text>
+                    <TouchableOpacity
+                        onPress={() => setShowReminderPicker(true)}
+                        className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex-row items-center justify-between"
+                    >
+                        <Text className="text-base text-zinc-900">{reminderDate || 'No Reminder Set'}</Text>
+                        {/* @ts-ignore */}
+                        <Calendar size={18} color="#71717a" />
+                    </TouchableOpacity>
+                    {showReminderPicker && (
+                        <DateTimePicker
+                            value={reminderDate ? new Date(reminderDate) : new Date()}
+                            mode="date"
+                            display="default"
+                            minimumDate={new Date()} // Prevent past dates
+                            onChange={(event, selectedDate) => {
+                                setShowReminderPicker(false);
+                                if (selectedDate) setReminderDate(selectedDate.toISOString().split('T')[0]);
+                            }}
+                        />
+                    )}
+                    <TouchableOpacity onPress={() => setReminderDate('')} className="mt-2">
+                        <Text className="text-red-500 text-xs">Clear Reminder</Text>
+                    </TouchableOpacity>
                 </View>
 
                 <View className="mb-8">
