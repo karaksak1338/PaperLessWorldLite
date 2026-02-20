@@ -43,6 +43,16 @@ export default function Home() {
   const [newTypeName, setNewTypeName] = useState("");
   const [displayLimit, setDisplayLimit] = useState(10);
 
+  // Profile & Subscription state
+  const [profile, setProfile] = useState<{ full_name: string | null, address: string | null, plan_id: string } | null>(null);
+  const [subscription, setSubscription] = useState<{ name: string, monthly_limit: number } | null>(null);
+  const [monthlyUsage, setMonthlyUsage] = useState(0);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showPlanAdmin, setShowPlanAdmin] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [subscriptionPlans, setSubscriptionPlans] = useState<{ id: string, name: string, monthly_limit: number, price: number }[]>([]);
+
   // Fetch Document Types
   const fetchTypes = async () => {
     const { data, error } = await supabase
@@ -68,6 +78,35 @@ export default function Home() {
     fetchDocs();
 
     fetchTypes();
+
+    const fetchProfileData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 1. Fetch Profile
+      let { data: profileData } = await supabase
+        .from("profiles")
+        .select("*, subscription_plans(name, monthly_limit)")
+        .eq("id", user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+        setEditName(profileData.full_name || "");
+        setEditAddress(profileData.address || "");
+        setSubscription(profileData.subscription_plans);
+      }
+
+      // 2. Fetch Usage (Docs created this month)
+      const { data: usageCount } = await supabase.rpc('get_monthly_usage', { target_user_id: user.id });
+      setMonthlyUsage(usageCount || 0);
+
+      // 3. Fetch all plans (for Admin)
+      const { data: plans } = await supabase.from("subscription_plans").select("*").order("price");
+      setSubscriptionPlans(plans || []);
+    };
+
+    fetchProfileData();
 
     // 4. Real-time subscriptions
     const docsChannel = supabase
@@ -166,6 +205,13 @@ export default function Home() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
+      // Check monthly limit
+      if (subscription && subscription.monthly_limit !== -1 && monthlyUsage >= subscription.monthly_limit) {
+        alert(`Monthly limit reached (${subscription.monthly_limit} docs). Please upgrade your plan.`);
+        setUploading(false);
+        return;
+      }
+
       // 1. Upload to Storage
       const fileName = `${user.id}/${Date.now()}-${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -210,6 +256,7 @@ export default function Home() {
 
       // Update local state immediately
       setDocuments((prev) => [newDoc as Document, ...prev]);
+      setMonthlyUsage(prev => prev + 1);
 
       alert("Document uploaded successfully! AI extraction complete.");
     } catch (error: any) {
@@ -325,6 +372,49 @@ export default function Home() {
     else fetchTypes(); // Proactive update for snappiness
   };
 
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: editName,
+        address: editAddress,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
+
+    setSaving(false);
+    if (error) alert("Error updating profile: " + error.message);
+    else alert("Profile updated successfully!");
+  };
+
+  const handleUpdatePlan = async (planId: string, limit: number, price: number) => {
+    const { error } = await supabase
+      .from("subscription_plans")
+      .update({ monthly_limit: limit, price: price })
+      .eq("id", planId);
+
+    if (error) alert("Error updating plan: " + error.message);
+    else {
+      alert("Plan updated!");
+      // Refresh plans
+      const { data } = await supabase.from("subscription_plans").select("*").order("price");
+      setSubscriptionPlans(data || []);
+    }
+  };
+
+  const handlePasswordReset = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !user.email) return;
+    const { error } = await supabase.auth.resetPasswordForEmail(user.email);
+    if (error) alert("Error: " + error.message);
+    else alert("Password reset email sent to " + user.email);
+  };
+
   return (
     <div className={styles.container}>
       <div className="gradient-bg" />
@@ -334,7 +424,7 @@ export default function Home() {
           PaperLessWorldLite
         </div>
         <div className={styles.navLinks}>
-          <a href="#" className={styles.navLink}>Dashboard</a>
+          <button onClick={() => setShowProfile(true)} className={styles.navLink}>Profile</button>
           <button onClick={handleSignOut} className={`${styles.navLink} ${styles.signOutBtn}`}>Sign Out</button>
         </div>
       </nav>
@@ -495,6 +585,86 @@ export default function Home() {
             </section>
           </aside>
         </div>
+
+        {showProfile && (
+          <div className={styles.modalOverlay} onClick={() => setShowProfile(false)}>
+            <div className={`${styles.modalContent} glass`} onClick={e => e.stopPropagation()}>
+              <button className={styles.closeBtn} onClick={() => setShowProfile(false)}>✕</button>
+              <h2>Account Settings</h2>
+
+              <div className={styles.profileSection}>
+                <div className={styles.planBadge}>
+                  Plan: <strong>{subscription?.name || "Free"}</strong> ({monthlyUsage} / {subscription?.monthly_limit === -1 ? '∞' : subscription?.monthly_limit} docs used this month)
+                </div>
+
+                <form onSubmit={handleUpdateProfile} className={styles.profileForm}>
+                  <div className={styles.formGroup}>
+                    <label>Full Name</label>
+                    <input type="text" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Your name" />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Address</label>
+                    <textarea value={editAddress} onChange={e => setEditAddress(e.target.value)} placeholder="Mailing address" rows={3} />
+                  </div>
+                  <button type="submit" className={styles.saveBtn} disabled={saving}>
+                    {saving ? "Saving..." : "Save Profile Details"}
+                  </button>
+                </form>
+
+                <hr className={styles.divider} />
+
+                <div className={styles.securitySection}>
+                  <h3>Security</h3>
+                  <p className={styles.hint}>Need to change your password? We'll send instructions to your email.</p>
+                  <button onClick={handlePasswordReset} className={styles.secondaryBtn}>Send Reset Email</button>
+                </div>
+
+                <hr className={styles.divider} />
+
+                <div className={styles.adminTrigger}>
+                  <button
+                    className={styles.plainLink}
+                    onClick={() => setShowPlanAdmin(!showPlanAdmin)}
+                  >
+                    {showPlanAdmin ? "Hide Plan Administration" : "Manage Subscription Plans (Admin)"}
+                  </button>
+                </div>
+
+                {showPlanAdmin && (
+                  <div className={styles.planAdminTable}>
+                    <h3>Manage Plans</h3>
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Plan Name</th>
+                          <th>Monthly Limit</th>
+                          <th>Save</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subscriptionPlans.map(plan => (
+                          <tr key={plan.id}>
+                            <td>{plan.name}</td>
+                            <td>
+                              <input
+                                type="number"
+                                defaultValue={plan.monthly_limit}
+                                onBlur={(e) => plan.monthly_limit = parseInt(e.target.value)}
+                              />
+                            </td>
+                            <td>
+                              <button onClick={() => handleUpdatePlan(plan.id, plan.monthly_limit, 0)}>Update</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {selectedDoc && (
           <div className={styles.modalOverlay} onClick={() => setSelectedDoc(null)}>

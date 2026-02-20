@@ -1,10 +1,11 @@
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { X, Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
 import { OCRService } from '../services/OCRService';
 import { StorageService } from '../services/StorageService';
 import { ReminderService } from '../services/ReminderService';
+import { supabase } from '../services/supabaseClient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -12,7 +13,44 @@ export default function ScanScreen() {
     const [isProcessing, setIsProcessing] = useState(false);
     const router = useRouter();
 
+    const [subscription, setSubscription] = useState<any>(null);
+    const [monthlyUsage, setMonthlyUsage] = useState(0);
+
+    useEffect(() => {
+        const fetchLimits = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Fetch usage
+            const { data: usageCount } = await supabase.rpc('get_monthly_usage', { target_user_id: user.id });
+            setMonthlyUsage(usageCount || 0);
+
+            // Fetch plan
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('subscription_plans(name, monthly_limit)')
+                .eq('id', user.id)
+                .single();
+
+            if (profile) setSubscription(profile.subscription_plans);
+        };
+        fetchLimits();
+    }, []);
+
+    const checkLimit = () => {
+        if (subscription && subscription.monthly_limit !== -1 && monthlyUsage >= subscription.monthly_limit) {
+            Alert.alert(
+                'Plan Limit Reached',
+                `You have reached your limit of ${subscription.monthly_limit} documents this month. Please upgrade your plan on our website.`,
+                [{ text: 'OK' }]
+            );
+            return false;
+        }
+        return true;
+    };
+
     const handleGalleryUpload = async () => {
+        if (!checkLimit()) return;
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: true,
@@ -51,6 +89,7 @@ export default function ScanScreen() {
     };
 
     const takePicture = async () => {
+        if (!checkLimit()) return;
         try {
             const result = await ImagePicker.launchCameraAsync({
                 mediaTypes: ['images'],

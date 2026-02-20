@@ -54,6 +54,7 @@ export default function Layout() {
             >
                 <Stack.Screen name="index" options={{ title: 'PaperLessWorldLite' }} />
                 <Stack.Screen name="login" options={{ title: 'Sign In', headerShown: false }} />
+                <Stack.Screen name="profile" options={{ title: 'My Account' }} />
                 <Stack.Screen name="scan" options={{ title: 'Scan Document', presentation: 'modal' }} />
                 <Stack.Screen name="details/[id]" options={{ title: 'Document Details' }} />
             </Stack>
