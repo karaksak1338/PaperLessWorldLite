@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+build/
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Supabase
+supabase/.temp/
+.env*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+.vercel
+*.log
+.gemini/
+brain/
