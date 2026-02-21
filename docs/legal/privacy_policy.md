@@ -3,7 +3,7 @@
 [Drafting Status: Project Specific]
 
 ## 1. Introduction
-This Privacy Policy describes how PaperLessWorldLite ("we," "our," or "us") collects, uses, and shares information about you.
+This Privacy Policy describes how DocuVault Pro ("we," "our," or "us") collects, uses, and shares information about you.
 
 ## 2. Data Minimization & Purpose
 We commit to data minimization. We only collect data that is strictly necessary for the operation of the service.

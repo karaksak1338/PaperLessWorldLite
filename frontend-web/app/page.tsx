@@ -602,7 +602,7 @@ export default function Home() {
 
       <nav className={`${styles.nav} glass`}>
         <div className={styles.logo}>
-          PaperLessWorldLite
+          DocuVault<span className={styles.accent}> Pro</span>
         </div>
         <div className={styles.navLinks}>
           <button onClick={() => setShowProfile(true)} className={styles.navLink}>Profile</button>
@@ -613,10 +613,10 @@ export default function Home() {
       <main className={styles.main}>
         <header className={styles.header}>
           <h1 className={styles.title}>
-            Manage your <span className={styles.gradientText}>Documents Paperless</span>
+            Your Secure <span className={styles.gradientText}>DocuVault Pro</span>
           </h1>
           <p className={styles.subtitle}>
-            Cloud-synced, AI-powered document intelligence for professionals.
+            Professional cloud-synced document intelligence & secure vault.
           </p>
         </header>
 
@@ -679,9 +679,20 @@ export default function Home() {
               {loading ? (
                 <p className={styles.loading}>Syncing with Vault...</p>
               ) : displayedDocuments.length === 0 ? (
-                <p className={styles.empty}>
-                  {isFiltered ? "No matching documents found." : "No documents found in your vault."}
-                </p>
+                <div className={styles.zeroState}>
+                  <div className={styles.zeroIcon}>📁</div>
+                  <h3>{isFiltered ? "No matching scans" : "Your Vault is Empty"}</h3>
+                  <p>
+                    {isFiltered
+                      ? "Try adjusting your filters to find what you're looking for."
+                      : "Start your paperless journey by uploading your first document."}
+                  </p>
+                  {!isFiltered && (
+                    <label htmlFor="docUpload" className={styles.miniUploadBtn}>
+                      Add First Document
+                    </label>
+                  )}
+                </div>
               ) : (
                 displayedDocuments.map((doc) => (
                   <div key={doc.id} className={styles.listItem}>
@@ -835,251 +846,257 @@ export default function Home() {
 
                 <hr className={styles.divider} />
 
-                <div className={styles.adminTrigger}>
-                  <button
-                    className={styles.plainLink}
-                    onClick={() => setShowAdminDashboard(!showAdminDashboard)}
-                  >
-                    {showAdminDashboard ? "Hide Management Dashboard" : "Open Admin Control Plane"}
-                  </button>
-                </div>
+                {profile?.role === 'ADMIN' && (
+                  <>
+                    <hr className={styles.divider} />
+                    <div className={styles.adminTrigger}>
+                      <button
+                        className={styles.plainLink}
+                        onClick={() => setShowAdminDashboard(!showAdminDashboard)}
+                      >
+                        {showAdminDashboard ? "Hide Management Dashboard" : "Open Admin Control Plane"}
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {showAdminDashboard && (
                   <div className={styles.planAdminTable}>
-                    <button className={activeTab === 'USERS' ? styles.activeTab : ''} onClick={() => setActiveTab('USERS')}>Users</button>
-                    <button className={activeTab === 'REQUESTS' ? styles.activeTab : ''} onClick={() => setActiveTab('REQUESTS')}>Requests</button>
-                    <button className={activeTab === 'PLANS' ? styles.activeTab : ''} onClick={() => setActiveTab('PLANS')}>Plans</button>
-                    <button className={activeTab === 'AUDIT' ? styles.activeTab : ''} onClick={() => setActiveTab('AUDIT')}>Audit Log</button>
-                  </div>
+                    <div className={styles.tabHeader}>
+                      <button className={activeTab === 'USERS' ? styles.activeTab : ''} onClick={() => setActiveTab('USERS')}>Users</button>
+                      <button className={activeTab === 'REQUESTS' ? styles.activeTab : ''} onClick={() => setActiveTab('REQUESTS')}>Requests</button>
+                      <button className={activeTab === 'PLANS' ? styles.activeTab : ''} onClick={() => setActiveTab('PLANS')}>Plans</button>
+                      <button className={activeTab === 'AUDIT' ? styles.activeTab : ''} onClick={() => setActiveTab('AUDIT')}>Audit Log</button>
+                    </div>
 
                     {activeTab === 'USERS' && (
-                  <div className={styles.adminTabContent}>
-                    <h3>User Administration</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>User/Username</th>
-                          <th>Status</th>
-                          <th>Plan</th>
-                          <th>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {allUsers.map(u => (
-                          <tr key={u.id}>
-                            <td>
-                              <div>{u.full_name || 'No Name'}</div>
-                              <div className={styles.hint}>@{u.username || 'no-username'}</div>
-                            </td>
-                            <td>
-                              <span className={`${styles.statusBadge} ${styles[u.status.toLowerCase()]}`}>
-                                {u.status}
-                              </span>
-                            </td>
-                            <td>{u.subscription_plans?.name}</td>
-                            <td>
-                              <button onClick={() => alert("Suspend flow TBD")}>Manage</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                      <div className={styles.adminTabContent}>
+                        <h3>User Administration</h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>User/Username</th>
+                              <th>Status</th>
+                              <th>Plan</th>
+                              <th>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allUsers.map(u => (
+                              <tr key={u.id}>
+                                <td>
+                                  <div>{u.full_name || 'No Name'}</div>
+                                  <div className={styles.hint}>@{u.username || 'no-username'}</div>
+                                </td>
+                                <td>
+                                  <span className={`${styles.statusBadge} ${styles[u.status.toLowerCase()]}`}>
+                                    {u.status}
+                                  </span>
+                                </td>
+                                <td>{u.subscription_plans?.name}</td>
+                                <td>
+                                  <button onClick={() => alert("Suspend flow TBD")}>Manage</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
 
-                {activeTab === 'REQUESTS' && (
-                  <div className={styles.adminTabContent}>
-                    <h3>Plan Change Requests</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>User</th>
-                          <th>Type</th>
-                          <th>Plan</th>
-                          <th>Date</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {planRequests.map(r => (
-                          <tr key={r.id}>
-                            <td>{r.profiles.username || r.profiles.full_name}</td>
-                            <td><strong>{r.request_type}</strong></td>
-                            <td>{r.requested_plan.name}</td>
-                            <td>{new Date(r.requested_at).toLocaleDateString()}</td>
-                            <td>
-                              {r.status === 'PENDING' ? (
-                                <div className={styles.btnGroup}>
-                                  <button className={styles.approveBtn} onClick={() => handleProcessRequest(r.id, true)}>Approve</button>
-                                  <button className={styles.rejectBtn} onClick={() => handleProcessRequest(r.id, false)}>Reject</button>
-                                </div>
-                              ) : (
-                                <span className={`${styles.statusBadge} ${styles[r.status.toLowerCase()]}`}>
-                                  {r.status}
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                    {activeTab === 'REQUESTS' && (
+                      <div className={styles.adminTabContent}>
+                        <h3>Plan Change Requests</h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>User</th>
+                              <th>Type</th>
+                              <th>Plan</th>
+                              <th>Date</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {planRequests.map(r => (
+                              <tr key={r.id}>
+                                <td>{r.profiles.username || r.profiles.full_name}</td>
+                                <td><strong>{r.request_type}</strong></td>
+                                <td>{r.requested_plan.name}</td>
+                                <td>{new Date(r.requested_at).toLocaleDateString()}</td>
+                                <td>
+                                  {r.status === 'PENDING' ? (
+                                    <div className={styles.btnGroup}>
+                                      <button className={styles.approveBtn} onClick={() => handleProcessRequest(r.id, true)}>Approve</button>
+                                      <button className={styles.rejectBtn} onClick={() => handleProcessRequest(r.id, false)}>Reject</button>
+                                    </div>
+                                  ) : (
+                                    <span className={`${styles.statusBadge} ${styles[r.status.toLowerCase()]}`}>
+                                      {r.status}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
 
-                {activeTab === 'PLANS' && (
-                  <div className={styles.adminTabContent}>
-                    <h3>Manage Subscription Tiers</h3>
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Plan Code</th>
-                          <th>Limit</th>
-                          <th>Price</th>
-                          <th>Sync</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subscriptionPlans.map(plan => (
-                          <tr key={plan.id}>
-                            <td><strong>{plan.plan_code}</strong></td>
-                            <td>
-                              <input
-                                type="number"
-                                defaultValue={plan.monthly_limit}
-                                onBlur={(e) => plan.monthly_limit = parseInt(e.target.value)}
-                              />
-                            </td>
-                            <td>${plan.price}</td>
-                            <td>
-                              <button onClick={() => handleUpdatePlan(plan.id, plan.monthly_limit, plan.price)}>Update</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                    {activeTab === 'PLANS' && (
+                      <div className={styles.adminTabContent}>
+                        <h3>Manage Subscription Tiers</h3>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Plan Code</th>
+                              <th>Limit</th>
+                              <th>Price</th>
+                              <th>Sync</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {subscriptionPlans.map(plan => (
+                              <tr key={plan.id}>
+                                <td><strong>{plan.plan_code}</strong></td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    defaultValue={plan.monthly_limit}
+                                    onBlur={(e) => plan.monthly_limit = parseInt(e.target.value)}
+                                  />
+                                </td>
+                                <td>${plan.price}</td>
+                                <td>
+                                  <button onClick={() => handleUpdatePlan(plan.id, plan.monthly_limit, plan.price)}>Update</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
 
-                {activeTab === 'AUDIT' && (
-                  <div className={styles.adminTabContent}>
-                    <h3>System Audit Trail</h3>
-                    <div className={styles.auditContainer}>
-                      {auditLogs.map(log => (
-                        <div key={log.id} className={styles.auditItem}>
-                          <div className={styles.auditMeta}>
-                            <span className={styles.auditAction}>{log.action}</span>
-                            <span className={styles.auditTable}>{log.table_name}</span>
-                            <span className={styles.auditTime}>{new Date(log.created_at).toLocaleString()}</span>
-                          </div>
-                          <div className={styles.auditDetails}>
-                            Record ID: <span className={styles.mono}>{log.record_id}</span>
-                          </div>
+                    {activeTab === 'AUDIT' && (
+                      <div className={styles.adminTabContent}>
+                        <h3>System Audit Trail</h3>
+                        <div className={styles.auditContainer}>
+                          {auditLogs.map(log => (
+                            <div key={log.id} className={styles.auditItem}>
+                              <div className={styles.auditMeta}>
+                                <span className={styles.auditAction}>{log.action}</span>
+                                <span className={styles.auditTable}>{log.table_name}</span>
+                                <span className={styles.auditTime}>{new Date(log.created_at).toLocaleString()}</span>
+                              </div>
+                              <div className={styles.auditDetails}>
+                                Record ID: <span className={styles.mono}>{log.record_id}</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-                )}
             </div>
           </div>
-          </div>
-  )
-}
+        )
+        }
 
-{
-  selectedDoc && (
-    <div className={styles.modalOverlay} onClick={() => setSelectedDoc(null)}>
-      <div className={`${styles.modalContent} glass`} onClick={e => e.stopPropagation()}>
-        <button className={styles.closeBtn} onClick={() => setSelectedDoc(null)}>✕</button>
-        <h2>Document Details</h2>
-        <div className={styles.modalGrid}>
-          <div className={styles.imagePreview}>
-            {signedUrl ? (
-              signedUrl.toLowerCase().includes(".pdf") ? (
-                <iframe src={signedUrl} className={styles.pdfIframe} />
-              ) : (
-                <img src={signedUrl} alt="Document" onError={(e) => {
-                  console.error("Image load failed, attempting recovery...");
-                  // If it fails, maybe it's not an image or CORS issue
-                }} />
-              )
-            ) : (
-              <div className={styles.loaderContainer}>
-                <div className={styles.loader} />
-                <p>Fetching secure preview...</p>
+        {
+          selectedDoc && (
+            <div className={styles.modalOverlay} onClick={() => setSelectedDoc(null)}>
+              <div className={`${styles.modalContent} glass`} onClick={e => e.stopPropagation()}>
+                <button className={styles.closeBtn} onClick={() => setSelectedDoc(null)}>✕</button>
+                <h2>Document Details</h2>
+                <div className={styles.modalGrid}>
+                  <div className={styles.imagePreview}>
+                    {signedUrl ? (
+                      signedUrl.toLowerCase().includes(".pdf") ? (
+                        <iframe src={signedUrl} className={styles.pdfIframe} />
+                      ) : (
+                        <img src={signedUrl} alt="Document" onError={(e) => {
+                          console.error("Image load failed, attempting recovery...");
+                          // If it fails, maybe it's not an image or CORS issue
+                        }} />
+                      )
+                    ) : (
+                      <div className={styles.loaderContainer}>
+                        <div className={styles.loader} />
+                        <p>Fetching secure preview...</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.details}>
+                    <div className={styles.detailItem}>
+                      <label>Vendor</label>
+                      <input
+                        type="text"
+                        value={editVendor}
+                        onChange={(e) => setEditVendor(e.target.value)}
+                        className={styles.modalInput}
+                      />
+                    </div>
+                    <div className={styles.detailItem}>
+                      <label>Date</label>
+                      <input
+                        type="date"
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        className={styles.modalInput}
+                      />
+                    </div>
+                    <div className={styles.detailItem}>
+                      <label>Amount</label>
+                      <input
+                        type="text"
+                        placeholder="0.00"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        className={styles.modalInput}
+                      />
+                    </div>
+                    <div className={styles.detailItem}>
+                      <label>Classification</label>
+                      <select
+                        className={styles.modalInput}
+                        value={editType}
+                        onChange={(e) => setEditType(e.target.value)}
+                      >
+                        <option value="Other">Other</option>
+                        {documentTypes.map(t => (
+                          <option key={t.id} value={t.name}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className={styles.detailItem}>
+                      <label>Reminder Date</label>
+                      <input
+                        type="date"
+                        value={editReminderDate}
+                        onChange={(e) => setEditReminderDate(e.target.value)}
+                        className={styles.modalInput}
+                      />
+                    </div>
+                    <button
+                      onClick={handleUpdate}
+                      className={styles.saveBtn}
+                      disabled={saving}
+                    >
+                      {saving ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-          <div className={styles.details}>
-            <div className={styles.detailItem}>
-              <label>Vendor</label>
-              <input
-                type="text"
-                value={editVendor}
-                onChange={(e) => setEditVendor(e.target.value)}
-                className={styles.modalInput}
-              />
             </div>
-            <div className={styles.detailItem}>
-              <label>Date</label>
-              <input
-                type="date"
-                value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
-                className={styles.modalInput}
-              />
-            </div>
-            <div className={styles.detailItem}>
-              <label>Amount</label>
-              <input
-                type="text"
-                placeholder="0.00"
-                value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
-                className={styles.modalInput}
-              />
-            </div>
-            <div className={styles.detailItem}>
-              <label>Classification</label>
-              <select
-                className={styles.modalInput}
-                value={editType}
-                onChange={(e) => setEditType(e.target.value)}
-              >
-                <option value="Other">Other</option>
-                {documentTypes.map(t => (
-                  <option key={t.id} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.detailItem}>
-              <label>Reminder Date</label>
-              <input
-                type="date"
-                value={editReminderDate}
-                onChange={(e) => setEditReminderDate(e.target.value)}
-                className={styles.modalInput}
-              />
-            </div>
-            <button
-              onClick={handleUpdate}
-              className={styles.saveBtn}
-              disabled={saving}
-            >
-              {saving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+          )
+        }
       </main >
 
-  <footer className={styles.footer}>
-    <p>© 2026 PaperLessWorldLite. Governed by NSK IT Consulting GmbH.</p>
-  </footer>
+      <footer className={styles.footer}>
+        <p>© 2026 PaperLessWorldLite. Governed by NSK IT Consulting GmbH.</p>
+      </footer>
     </div >
   );
 }

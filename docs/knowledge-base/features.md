@@ -1,4 +1,4 @@
-# Feature Specification: PaperLessWorldLite
+# Feature Specification: DocuVault Pro
 
 This document defines the core functional blocks of the application, prioritizing automated document intelligence and cloud-native synchronization.
 

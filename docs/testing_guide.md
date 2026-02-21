@@ -1,4 +1,4 @@
-# Modern Testing Guide: PaperLessWorldLite (Expo Go Compatible)
+# Modern Testing Guide: DocuVault Pro (Expo Go Compatible)
 
 ## 1. Environment Prerequisite
 - **Web**: `cd frontend-web` -> `npm run dev`

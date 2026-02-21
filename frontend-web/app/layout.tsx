@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PaperLessWorldLite",
+  title: "DocuVault Pro",
   description: "Cloud-synced document intelligence by NSK IT Consulting GmbH",
 };
 

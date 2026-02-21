@@ -378,8 +378,51 @@
   font-family: monospace;
 }
 
-.loading,
-.empty {
+.zeroState {
+  text-align: center;
+  padding: 5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.zeroIcon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.3));
+}
+
+.zeroState h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.zeroState p {
+  color: var(--text-muted);
+  max-width: 400px;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+.miniUploadBtn {
+  background: var(--primary);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.miniUploadBtn:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+.loading {
   text-align: center;
   padding: 3rem;
   color: var(--text-muted);

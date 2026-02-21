@@ -65,7 +65,7 @@ export default function LoginScreen() {
                 <View className="flex-1 justify-center px-6">
                     <View style={styles.header}>
                         <Text style={styles.title}>{isSignUp ? 'Join' : 'Welcome to'}</Text>
-                        <Text style={styles.brand}>PaperLessWorldLite</Text>
+                        <Text style={styles.brand}>DocuVault Pro</Text>
                         <Text style={styles.subtitle}>
                             {isSignUp ? 'Create an account to start syncing' : 'Enter your credentials to access your vault'}
                         </Text>

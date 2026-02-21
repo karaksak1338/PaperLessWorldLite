@@ -1,4 +1,4 @@
--- Supabase Schema for PaperLessWorldLite
+-- Supabase Schema for DocuVault Pro
 
 -- 1. Document Types Table (For dynamic management)
 CREATE TABLE IF NOT EXISTS public.document_types (

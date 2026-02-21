@@ -3,7 +3,7 @@
 [Drafting Status: Project Specific]
 
 ## 1. Acceptance of Terms
-By using PaperLessWorldLite, you agree to these terms.
+By using DocuVault Pro, you agree to these terms.
 
 ## 2. AI Output Disclaimer
 AI outputs are probabilistic and may be incorrect. We do not guarantee factual certainty.

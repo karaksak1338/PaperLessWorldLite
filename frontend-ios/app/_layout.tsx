@@ -52,7 +52,7 @@ export default function Layout() {
                     },
                 }}
             >
-                <Stack.Screen name="index" options={{ title: 'PaperLessWorldLite' }} />
+                <Stack.Screen name="index" options={{ title: 'DocuVault Pro' }} />
                 <Stack.Screen name="login" options={{ title: 'Sign In', headerShown: false }} />
                 <Stack.Screen name="profile" options={{ title: 'My Account' }} />
                 <Stack.Screen name="scan" options={{ title: 'Scan Document', presentation: 'modal' }} />
