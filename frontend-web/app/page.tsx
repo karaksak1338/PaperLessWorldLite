@@ -518,6 +518,28 @@ export default function Home() {
     }
   };
 
+  const handleUpdateUserStatus = async (userId: string, status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED') => {
+    if (!confirm(`Are you sure you want to change user status to ${status}?`)) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ status })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      alert("User status updated!");
+      // Refresh user list
+      const { data: users } = await supabase.from("profiles").select("*, subscription_plans(name, plan_code, monthly_limit)").order("full_name");
+      setAllUsers(users || []);
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleProcessRequest = async (requestId: string, approve: boolean) => {
     setSaving(true);
     try {
@@ -822,7 +844,7 @@ export default function Home() {
                       <div className={styles.planGrid}>
                         {subscriptionPlans.filter(p => p.id !== profile.plan_id).map(p => (
                           <div key={p.id} className={styles.planOption}>
-                            <span>{p.name} ($0.00)</span>
+                            <span>{p.name} (${p.price.toFixed(2)})</span>
                             <button
                               onClick={() => handleRequestPlanChange(p.id, p.monthly_limit > (subscription?.monthly_limit || 0) ? 'UPGRADE' : 'DOWNGRADE')}
                               className={styles.miniBtn}
@@ -895,7 +917,15 @@ export default function Home() {
                                 </td>
                                 <td>{u.subscription_plans?.name}</td>
                                 <td>
-                                  <button onClick={() => alert("Suspend flow TBD")}>Manage</button>
+                                  <select
+                                    className={styles.miniSelect}
+                                    value={u.status}
+                                    onChange={(e) => handleUpdateUserStatus(u.id, e.target.value as any)}
+                                  >
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="SUSPENDED">Suspend</option>
+                                    <option value="DISABLED">Disable</option>
+                                  </select>
                                 </td>
                               </tr>
                             ))}

@@ -66,7 +66,7 @@ serve(async (req) => {
         if (cleanPath.toLowerCase().endsWith(".pdf")) mimeType = "application/pdf";
         else if (cleanPath.toLowerCase().endsWith(".png")) mimeType = "image/png";
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -74,7 +74,7 @@ serve(async (req) => {
             body: JSON.stringify({
                 contents: [{
                     parts: [
-                        { text: "Extract document details as JSON: { \"vendor\": string, \"date\": \"YYYY-MM-DD\", \"amount\": string, \"type\": \"Invoice\"|\"Receipt\"|\"Contract\"|\"Other\", \"confidence\": number }. Use the text in the document. Return ONLY the JSON object." },
+                        { text: "Extract document details as JSON: { \"vendor\": string, \"date\": \"YYYY-MM-DD\", \"amount\": string, \"type\": \"Invoice\"|\"Receipt\"|\"Contract\"|\"Other\", \"confidence\": number }. Use the text in the document. For 'amount', extract ONLY the numeric value (e.g. '1251.74' instead of '1251.74 EUR'). If numeric amount is not found, use null. Return ONLY the JSON object." },
                         {
                             inlineData: {
                                 mimeType: mimeType,
@@ -103,6 +103,12 @@ serve(async (req) => {
         // Clean up markdown code blocks if the AI includes them
         content = content.replace(/```json\s?|\s?```/g, '').trim();
         const extracted = JSON.parse(content);
+
+        // EXTRA SAFETY: Force sanitization of amount string
+        if (extracted.amount && typeof extracted.amount === 'string') {
+            // Strip everything except numbers, dots, and commas (then normalize to dot)
+            extracted.amount = extracted.amount.replace(/[^0-9.,]/g, '').replace(',', '.');
+        }
 
         return new Response(JSON.stringify(extracted), {
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },

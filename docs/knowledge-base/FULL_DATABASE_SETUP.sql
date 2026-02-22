@@ -192,13 +192,16 @@ DECLARE
     new_request_id UUID;
 BEGIN
     SELECT subscription_state INTO current_state FROM public.profiles WHERE id = auth.uid();
+    -- Check if a request already exists to prevent duplicates (already done by subscription_state check but double safety)
     IF current_state = 'PENDING_CHANGE' THEN
         RAISE EXCEPTION 'CHANGE_ALREADY_PENDING' USING ERRCODE = 'P0002';
     END IF;
 
+    -- Quota Enforcement on Downgrade
     IF type = 'DOWNGRADE' THEN
         SELECT monthly_limit INTO target_limit FROM public.subscription_plans WHERE id = target_plan_id;
         SELECT public.get_monthly_usage(auth.uid()) INTO current_usage;
+        -- If target is not unlimited (-1) and current usage exceeds it
         IF target_limit <> -1 AND current_usage > target_limit THEN
             RAISE EXCEPTION 'QUOTA_CONFLICT' USING ERRCODE = 'P0003';
         END IF;
@@ -272,9 +275,12 @@ CREATE POLICY "Plans view" ON public.subscription_plans FOR SELECT TO authentica
 DROP POLICY IF EXISTS "Plans admin" ON public.subscription_plans;
 CREATE POLICY "Plans admin" ON public.subscription_plans FOR ALL TO authenticated USING (public.is_admin());
 
--- Requests (Own view, Admin all)
+-- Requests (Own view/insert, Admin all)
 DROP POLICY IF EXISTS "Requests own" ON public.plan_change_requests;
 CREATE POLICY "Requests own" ON public.plan_change_requests FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Requests insert" ON public.plan_change_requests;
+CREATE POLICY "Requests insert" ON public.plan_change_requests FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Requests admin" ON public.plan_change_requests;
 CREATE POLICY "Requests admin" ON public.plan_change_requests FOR ALL TO authenticated USING (public.is_admin());
