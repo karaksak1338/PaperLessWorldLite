@@ -30,9 +30,15 @@ export default function LoginPage() {
             }
         } catch (error: any) {
             console.error('Auth error:', error);
-            if (error.message.includes('User already registered') && view === 'signup') {
+            const errMsg = error.message || '';
+
+            if (errMsg.includes('User already registered') && view === 'signup') {
                 setMessage('Email already registered. Switching to Sign In.');
                 setView('signin');
+            } else if (errMsg.includes('rate limit exceeded')) {
+                setMessage('Security Limit: Too many requests. Please wait a few minutes or contact support for higher limits.');
+            } else if (errMsg.includes('Network request failed')) {
+                setMessage('Connection Error: Please check your internet or firewall settings.');
             } else {
                 setMessage(error.message || 'An unexpected error occurred');
             }

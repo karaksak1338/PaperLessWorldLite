@@ -614,8 +614,15 @@ export default function Home() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !user.email) return;
     const { error } = await supabase.auth.resetPasswordForEmail(user.email);
-    if (error) alert("Error: " + error.message);
-    else alert("Password reset email sent to " + user.email);
+    if (error) {
+      if (error.message.includes('rate limit exceeded')) {
+        alert("Security: Email rate limit reached. Please wait a few minutes before trying again.");
+      } else {
+        alert("Reset Error: " + error.message);
+      }
+    } else {
+      alert("Password reset email sent to " + user.email);
+    }
   };
 
   return (
