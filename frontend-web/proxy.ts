@@ -6,7 +6,7 @@ export async function proxy(request: NextRequest) {
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-        console.error("Middleware Error: Missing Supabase environment variables.");
+        console.error("Proxy Error: Missing Supabase environment variables.");
         return NextResponse.next();
     }
 
@@ -70,20 +70,19 @@ export async function proxy(request: NextRequest) {
 
     // If no user and trying to access protected route -> login
     if (!user && !isLoginPage && !isAuthPage) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        return NextResponse.redirect(url);
+        return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // If user and on login page -> home
     if (user && isLoginPage) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/';
-        return NextResponse.redirect(url);
+        return NextResponse.redirect(new URL('/', request.url));
     }
 
     return response;
 }
+
+// Ensure default export for Next.js 16 compatibility
+export default proxy;
 
 export const config = {
     matcher: [
