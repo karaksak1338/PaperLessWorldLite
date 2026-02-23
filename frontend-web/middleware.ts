@@ -1,12 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-        console.error("Proxy Error: Missing Supabase environment variables.");
+        console.error("Middleware Error: Missing Supabase environment variables.");
         return NextResponse.next();
     }
 
@@ -70,19 +70,21 @@ export async function proxy(request: NextRequest) {
 
     // If no user and trying to access protected route -> login
     if (!user && !isLoginPage && !isAuthPage) {
+        console.log(`[Middleware] No user for protected route ${request.nextUrl.pathname}. Redirecting to /login`);
         return NextResponse.redirect(new URL('/login', request.url));
     }
 
     // If user and on login page -> home
     if (user && isLoginPage) {
+        console.log(`[Middleware] User exists on /login. Redirecting to /`);
         return NextResponse.redirect(new URL('/', request.url));
     }
 
     return response;
 }
 
-// Ensure default export for Next.js 16 compatibility
-export default proxy;
+// Ensure default export for Next.js convention
+export default middleware;
 
 export const config = {
     matcher: [

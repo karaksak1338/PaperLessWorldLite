@@ -185,6 +185,19 @@ export default function Home() {
 
     fetchProfileData();
 
+    // 4. Auth State Listener
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth Event:", event);
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        fetchProfileData();
+      } else if (event === "PASSWORD_RECOVERY") {
+        window.location.href = "/auth/reset-password";
+      } else if (event === "SIGNED_OUT") {
+        setProfile(null);
+        setDocuments([]);
+      }
+    });
+
     // 4. Real-time subscriptions
     const docsChannel = supabase
       .channel("documents_changes")
@@ -217,6 +230,7 @@ export default function Home() {
     return () => {
       supabase.removeChannel(docsChannel);
       supabase.removeChannel(typesChannel);
+      authListener.unsubscribe();
     };
   }, []);
 
