@@ -319,7 +319,14 @@ export default function Home() {
             image_uri: uploadData.path,
             vendor: ocrData.vendor || "Manual Upload",
             date: ocrData.date || null,
-            amount: ocrData.amount || null,
+            amount: (() => {
+              if (!ocrData.amount) return null;
+              let s = String(ocrData.amount).replace(/[^0-9.,]/g, '');
+              const lastComma = s.lastIndexOf(',');
+              const lastDot = s.lastIndexOf('.');
+              if (lastComma > lastDot) return s.replace(/\./g, '').replace(',', '.');
+              return s.replace(/,/g, '');
+            })(),
             type: ocrData.type || "Other",
             reminder_date: null,
           },
@@ -377,9 +384,16 @@ export default function Home() {
         }
       }
 
-      // Sanitize amount: empty string to null, strip non-numeric
-      const amountStr = String(editAmount || "");
-      const sanitizedAmount = amountStr.trim() === '' ? null : amountStr.replace(/[^0-9.]/g, '');
+      // Sanitize amount: empty string to null, handle US/EU separators
+      const amountStr = String(editAmount || "").trim();
+      const sanitizedAmount = (() => {
+        if (!amountStr) return null;
+        let s = amountStr.replace(/[^0-9.,]/g, '');
+        const lastComma = s.lastIndexOf(',');
+        const lastDot = s.lastIndexOf('.');
+        if (lastComma > lastDot) return s.replace(/\./g, '').replace(',', '.');
+        return s.replace(/,/g, '');
+      })();
 
       const { error } = await supabase
         .from("documents")
@@ -607,6 +621,28 @@ export default function Home() {
       alert("Plan updated!");
       const { data } = await supabase.from("subscription_plans").select("*").order("price");
       setSubscriptionPlans(data || []);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmation = prompt("This action is IRREVERSIBLE. All your documents and data will be permanently deleted. Type 'DELETE' to confirm:");
+    if (confirmation !== 'DELETE') {
+      alert("Deletion cancelled.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase.rpc('delete_own_user');
+      if (error) throw error;
+
+      alert("Your account has been deleted. We are sorry to see you go.");
+      await supabase.auth.signOut();
+      window.location.reload();
+    } catch (error: any) {
+      alert("Error: " + error.message);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -863,6 +899,28 @@ export default function Home() {
                       </div>
                     </div>
                   )}
+                </div>
+
+                <hr className={styles.divider} />
+
+                <div className={styles.securitySection}>
+                  <h3>Account Management</h3>
+                  <div className={styles.dangerZone}>
+                    <p className={styles.hint}>No longer need your subscription? You can request a cancellation.</p>
+                    <button
+                      onClick={() => handleRequestPlanChange(profile?.plan_id || '', 'CANCEL')}
+                      className={styles.secondaryBtn}
+                      disabled={profile?.subscription_state === 'CANCELLED' || profile?.subscription_state === 'PENDING_CHANGE'}
+                    >
+                      Cancel Subscription
+                    </button>
+
+                    <hr className={styles.miniDivider} />
+
+                    <h4 className={styles.dangerTitle}>Danger Zone</h4>
+                    <p className={styles.hint}>Permanently delete your account and all associated data.</p>
+                    <button onClick={handleDeleteAccount} className={styles.deleteAccountBtn}>Delete Account Permanently</button>
+                  </div>
                 </div>
 
                 <hr className={styles.divider} />

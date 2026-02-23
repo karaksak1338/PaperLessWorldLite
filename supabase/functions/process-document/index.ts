@@ -104,10 +104,16 @@ serve(async (req) => {
         content = content.replace(/```json\s?|\s?```/g, '').trim();
         const extracted = JSON.parse(content);
 
-        // EXTRA SAFETY: Force sanitization of amount string
-        if (extracted.amount && typeof extracted.amount === 'string') {
-            // Strip everything except numbers, dots, and commas (then normalize to dot)
-            extracted.amount = extracted.amount.replace(/[^0-9.,]/g, '').replace(',', '.');
+        // EXTRA SAFETY: Force sanitization of amount string (Handle US/EU separators)
+        if (extracted.amount && (typeof extracted.amount === 'string' || typeof extracted.amount === 'number')) {
+            let s = String(extracted.amount).replace(/[^0-9.,]/g, '');
+            const lastComma = s.lastIndexOf(',');
+            const lastDot = s.lastIndexOf('.');
+            if (lastComma > lastDot) {
+                extracted.amount = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                extracted.amount = s.replace(/,/g, '');
+            }
         }
 
         return new Response(JSON.stringify(extracted), {
