@@ -922,7 +922,12 @@ export default function Home() {
                           <div key={p.id} className={styles.planOption}>
                             <span>{p.name} (${p.price.toFixed(2)})</span>
                             <button
-                              onClick={() => handleRequestPlanChange(p.id, p.monthly_limit > (subscription?.monthly_limit || 0) ? 'UPGRADE' : 'DOWNGRADE')}
+                              onClick={() => {
+                                const currentLimit = subscription?.monthly_limit || 0;
+                                const targetLimit = p.monthly_limit;
+                                const isUpgrade = targetLimit === -1 || (currentLimit !== -1 && targetLimit > currentLimit);
+                                handleRequestPlanChange(p.id, isUpgrade ? 'UPGRADE' : 'DOWNGRADE');
+                              }}
                               className={styles.miniBtn}
                             >
                               Request
