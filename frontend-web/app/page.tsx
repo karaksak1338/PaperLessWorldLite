@@ -64,6 +64,7 @@ export default function Home() {
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
 
   // Edit form state
   const [editVendor, setEditVendor] = useState("");
@@ -272,84 +273,112 @@ export default function Home() {
   const displayedDocuments = filteredDocuments.slice(0, displayLimit);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
+    const fileArray = Array.from(files);
+    let successCount = 0;
+    let failCount = 0;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("No user found");
 
-      // Check monthly limit
-      if (subscription && subscription.monthly_limit !== -1 && monthlyUsage >= subscription.monthly_limit) {
-        alert(`Monthly limit reached (${subscription.monthly_limit} docs). Please upgrade your plan.`);
-        setUploading(false);
-        return;
-      }
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+        setUploadStatus(`Processing ${i + 1} of ${fileArray.length}: ${file.name}...`);
 
-      // 1. Upload to Storage
-      // Sanitize filename: remove special characters that cause "Invalid key" errors
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const fileName = `${user.id}/${Date.now()}-${safeName}`;
+        try {
+          // Check monthly limit for each file
+          const { data: currentProfile } = await supabase
+            .from("profiles")
+            .select("*, subscription_plans(monthly_limit)")
+            .eq("id", user.id)
+            .single();
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("documents")
-        .upload(fileName, file);
+          const { data: usageCount } = await supabase.rpc('get_monthly_usage', { target_user_id: user.id });
 
-      if (uploadError) throw uploadError;
+          if (currentProfile?.subscription_plans &&
+            currentProfile.subscription_plans.monthly_limit !== -1 &&
+            (usageCount || 0) >= currentProfile.subscription_plans.monthly_limit) {
+            alert(`Monthly limit reached. Processed ${successCount} files before stopping.`);
+            break;
+          }
 
-      // 2. Call AI OCR Edge Function
-      let ocrData = { vendor: "Manual Upload", date: new Date().toISOString().split('T')[0], amount: null, type: "Other" };
-      try {
-        const { data: aiData, error: aiError } = await supabase.functions.invoke('process-document', {
-          body: { imagePath: uploadData.path }
-        });
-        if (!aiError && aiData) {
-          ocrData = aiData;
-        } else {
-          console.warn("AI Analysis failed, using fallback:", aiError);
+          // 1. Upload to Storage
+          // Sanitize filename: remove special characters that cause "Invalid key" errors
+          const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+          const fileName = `${user.id}/${Date.now()}-${safeName}`;
+
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from("documents")
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          // 2. Call AI OCR Edge Function
+          let ocrData = { vendor: "Manual Upload", date: new Date().toISOString().split('T')[0], amount: null, type: "Other" };
+          try {
+            const { data: aiData, error: aiError } = await supabase.functions.invoke('process-document', {
+              body: { imagePath: uploadData.path }
+            });
+            if (!aiError && aiData) {
+              ocrData = aiData;
+            }
+          } catch (e) {
+            console.warn("AI Service unavailable for", file.name);
+          }
+
+          // 3. Insert DB record
+          const { data: newDoc, error: dbError } = await supabase
+            .from("documents")
+            .insert([
+              {
+                user_id: user.id,
+                image_uri: uploadData.path,
+                vendor: ocrData.vendor || "Manual Upload",
+                date: ocrData.date || null,
+                amount: ocrData.amount ? (() => {
+                  if (!ocrData.amount) return null;
+                  let s = String(ocrData.amount).replace(/[^0-9.,]/g, '');
+                  const lastComma = s.lastIndexOf(',');
+                  const lastDot = s.lastIndexOf('.');
+                  if (lastComma > lastDot) return s.replace(/\./g, '').replace(',', '.');
+                  return s.replace(/,/g, '');
+                })() : null,
+                type: ocrData.type || "Other",
+                reminder_date: null,
+              },
+            ])
+            .select()
+            .single();
+
+          if (dbError) throw dbError;
+
+          // Update local state immediately
+          setDocuments((prev) => [newDoc as Document, ...prev]);
+          setMonthlyUsage(prev => prev + 1);
+          successCount++;
+        } catch (fileError: any) {
+          console.error(`Failed to process ${file.name}:`, fileError);
+          failCount++;
         }
-      } catch (e) {
-        console.warn("AI Service unavailable, using fallback.");
       }
 
-      // 3. Insert DB record
-      const { data: newDoc, error: dbError } = await supabase
-        .from("documents")
-        .insert([
-          {
-            user_id: user.id,
-            image_uri: uploadData.path,
-            vendor: ocrData.vendor || "Manual Upload",
-            date: ocrData.date || null,
-            amount: (() => {
-              if (!ocrData.amount) return null;
-              let s = String(ocrData.amount).replace(/[^0-9.,]/g, '');
-              const lastComma = s.lastIndexOf(',');
-              const lastDot = s.lastIndexOf('.');
-              if (lastComma > lastDot) return s.replace(/\./g, '').replace(',', '.');
-              return s.replace(/,/g, '');
-            })(),
-            type: ocrData.type || "Other",
-            reminder_date: null,
-          },
-        ])
-        .select()
-        .single();
-
-      if (dbError) throw dbError;
-
-      // Update local state immediately
-      setDocuments((prev) => [newDoc as Document, ...prev]);
-      setMonthlyUsage(prev => prev + 1);
-
-      alert("Document uploaded successfully! AI extraction complete.");
+      if (failCount > 0) {
+        alert(`Finished! ${successCount} uploaded successfully, ${failCount} failed.`);
+      } else {
+        alert(`Successfully uploaded ${successCount} document(s).`);
+      }
     } catch (error: any) {
-      console.error("Full Upload Error:", error);
-      // Mask internal technical details line User IDs or raw "Invalid key" paths
-      alert("Upload failed. Please ensure the filename is valid and try again later.");
+      console.error("Critical batch upload error:", error);
+      alert("Batch upload encountered a critical error.");
     } finally {
       setUploading(false);
+      setUploadStatus("");
+      // Reset input value to allow re-uploading the same files
+      e.target.value = "";
     }
   };
 
@@ -736,9 +765,10 @@ export default function Home() {
                   className={styles.uploadInput}
                   accept="image/*"
                   onChange={handleUpload}
+                  multiple
                 />
                 <label htmlFor="docUpload" className={styles.uploadBtn}>
-                  {uploading ? "Uploading..." : "Upload Document"}
+                  {uploading ? (uploadStatus || "Uploading...") : "Upload Document"}
                 </label>
               </div>
             </div>
