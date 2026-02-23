@@ -11,6 +11,20 @@ export default function LoginPage() {
     const [view, setView] = useState<'signin' | 'signup' | 'forgot'>('signin');
     const [message, setMessage] = useState('');
 
+    // Handle hash errors (like expired links)
+    useState(() => {
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash;
+            if (hash.includes('error=')) {
+                const params = new URLSearchParams(hash.replace('#', '?'));
+                const error = params.get('error_description') || params.get('error');
+                if (error) {
+                    setMessage(`Authentication Error: ${decodeURIComponent(error.replace(/\+/g, ' '))}`);
+                }
+            }
+        }
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
