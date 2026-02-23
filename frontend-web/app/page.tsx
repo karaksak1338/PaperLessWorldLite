@@ -288,7 +288,10 @@ export default function Home() {
       }
 
       // 1. Upload to Storage
-      const fileName = `${user.id}/${Date.now()}-${file.name}`;
+      // Sanitize filename: remove special characters that cause "Invalid key" errors
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${user.id}/${Date.now()}-${safeName}`;
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("documents")
         .upload(fileName, file);
@@ -343,8 +346,8 @@ export default function Home() {
       alert("Document uploaded successfully! AI extraction complete.");
     } catch (error: any) {
       console.error("Full Upload Error:", error);
-      const errorMessage = error.message || error.error || JSON.stringify(error) || "Unknown error occurred";
-      alert("Upload failed: " + errorMessage);
+      // Mask internal technical details line User IDs or raw "Invalid key" paths
+      alert("Upload failed. Please ensure the filename is valid and try again later.");
     } finally {
       setUploading(false);
     }

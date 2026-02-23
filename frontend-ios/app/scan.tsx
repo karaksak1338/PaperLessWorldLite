@@ -81,7 +81,7 @@ export default function ScanScreen() {
                 }
             } catch (error: any) {
                 console.error('Upload failed:', error);
-                Alert.alert('Error', error.message || 'Gallery upload failed');
+                Alert.alert('Error', 'Gallery upload failed. Please ensure the filename is valid and try again.');
             } finally {
                 setIsProcessing(false);
             }
@@ -129,8 +129,8 @@ export default function ScanScreen() {
             }
         } catch (error: any) {
             setIsProcessing(false);
-            Alert.alert('Error', error.message || 'Failed to process document');
-            console.error(error);
+            console.error('Process failed:', error);
+            Alert.alert('Error', 'Failed to process document. Please try again.');
         }
     };
 
