@@ -24,6 +24,7 @@ interface UserProfile {
   last_name: string | null;
   address: string | null;
   company: string | null;
+  email: string | null;
   role: 'USER' | 'ADMIN';
   status: 'ACTIVE' | 'SUSPENDED' | 'DISABLED';
   subscription_state: 'ACTIVE' | 'PENDING_CHANGE' | 'CANCELLED' | 'EXPIRED';
@@ -1011,7 +1012,7 @@ export default function Home() {
                               <tr key={u.id}>
                                 <td>
                                   <div>{u.full_name || 'No Name'}</div>
-                                  <div className={styles.hint}>@{u.username || 'no-username'}</div>
+                                  <div className={styles.hint}>{u.email || '@' + (u.username || 'no-username')}</div>
                                 </td>
                                 <td>
                                   <span className={`${styles.statusBadge} ${styles[u.status.toLowerCase()]}`}>
@@ -1099,7 +1100,15 @@ export default function Home() {
                                     onBlur={(e) => plan.monthly_limit = parseInt(e.target.value)}
                                   />
                                 </td>
-                                <td>${plan.price}</td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    defaultValue={plan.price}
+                                    onBlur={(e) => plan.price = parseFloat(e.target.value)}
+                                    style={{ width: '80px' }}
+                                  />
+                                </td>
                                 <td>
                                   <button onClick={() => handleUpdatePlan(plan.id, plan.monthly_limit, plan.price)}>Update</button>
                                 </td>
