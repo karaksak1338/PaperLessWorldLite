@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS public.documents (
     vendor TEXT,
     date DATE,
     amount DECIMAL(10, 2),
-    type TEXT,
+    type TEXT, -- Dynamic: Managed via document_types table
     reminder_date DATE,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
@@ -215,6 +215,21 @@ BEGIN
     RETURN new_request_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Function: Delete Own User (SECURITY DEFINER to bypass auth.users restrictions)
+CREATE OR REPLACE FUNCTION public.delete_own_user()
+RETURNS VOID AS $$
+DECLARE
+    target_user_id UUID := auth.uid();
+BEGIN
+    IF target_user_id IS NULL THEN
+        RAISE EXCEPTION 'NOT_AUTHENTICATED';
+    END IF;
+
+    -- Profiles and documents will CASCADE delete due to foreign key constraints
+    DELETE FROM auth.users WHERE id = target_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger: Audit Logging
 CREATE OR REPLACE FUNCTION public.audit_log_trigger()
