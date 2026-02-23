@@ -716,9 +716,12 @@ export default function Home() {
         <div className={styles.logo}>
           DocuVault<span className={styles.accent}> Pro</span>
         </div>
-        <div className={styles.navLinks}>
-          <button onClick={() => setShowProfile(true)} className={styles.navLink}>Profile</button>
-          <button onClick={handleSignOut} className={`${styles.navLink} ${styles.signOutBtn}`}>Sign Out</button>
+        <div className={styles.userNav}>
+          <div className={styles.navLinks}>
+            <button onClick={() => setShowProfile(true)} className={`${styles.navLink} ${styles.profileBtn}`}>Profile</button>
+            <button onClick={handleSignOut} className={`${styles.navLink} ${styles.signOutBtn}`}>Sign Out</button>
+          </div>
+          {profile?.email && <span className={styles.userEmail}>{profile.email}</span>}
         </div>
       </nav>
 
